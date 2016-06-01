@@ -177,6 +177,9 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		minetest.set_node(pos,{name="air"})
 		pos.y=pos.y+1
 		minetest.set_node(pos,{name="air"})
+                if ctf.setting("flag.moving") then
+                    player:get_inventory():add_item('main', 'ctf_flag:flag')
+                end
 
 		return true
 	end
