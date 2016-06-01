@@ -84,7 +84,7 @@ minetest.register_abm({
 })
 
 if ctf.setting("flag.crafting") then
-    minetest.register_craft({
+	minetest.register_craft({
 	output = "ctf_flag:flag",
 	recipe = {
 		{"default:stick", "group:wool"},
