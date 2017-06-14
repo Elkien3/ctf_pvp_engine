@@ -310,6 +310,8 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 					ctf.diplo.set(tname, tname2, "peace")
 					ctf.post(tname, {
 						msg = "You have cancelled the alliance treaty with " .. tname2 })
+						irc:say(tname .. " has cancelled the alliance treaty with " .. tname2 .. "!")
+						minetest.chat_send_all(tname .. " has cancelled the alliance treaty with " .. tname2 .. "!")
 					ctf.post(tname2, {
 						msg = tname .. " has cancelled the alliance treaty" })
 				end
@@ -323,9 +325,10 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				ctf.diplo.set(tname, tname2, "war")
 				ctf.post(tname, {
 					msg = "You have declared war on " .. tname2 })
+					irc:say(tname .. "has declared war on " .. tname2 .. "!")
+					minetest.chat_send_all(tname .. "has declared war on " .. tname2 .. "!")
 				ctf.post(tname2, {
 					msg = tname .. " has declared war on you" })
-
 				ctf.gui.show(name, "diplo")
 				return true
 			end

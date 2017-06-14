@@ -139,7 +139,66 @@ minetest.register_chatcommand("team", {
 })
 
 minetest.register_chatcommand("join", {
-	params = "team name",
+	params = "player name",
+	description = "Add to team",
+	func = function(name, param)
+	local team = ctf.player(name).team
+	if minetest.get_auth_handler().get_auth(param) == nil then
+		return false, "Player '" .. param .. "' dosn't exist!"
+	elseif ctf.player(param).team then
+		return false, param .. " is already in a team!"
+	else
+	if ctf.player(name).auth then
+			if ctf.join(param, team, false, name) then
+				return true, "Joined " .. param .. " to " .. team .. "!"
+			else 
+				return false, "Failed to join team!"
+			end
+		else
+			return false, "You are not the team owner!"
+		end
+	end
+end
+})
+minetest.register_chatcommand("teamkick", {
+	params = "player name",
+	description = "Kick player from your team",
+	func = function(name, param)
+	local team = ctf.player(name).team
+	if ctf.player(param).team ~= team then
+		return false, param .. " is not in your team!"
+	else
+	if ctf.player(name).auth then
+			if ctf.remove_player(param) then
+				return true, "Kicked " .. param .. " from " .. team .. "!"
+			else 
+				return false, "Failed to kick " .. param.. "!"
+			end
+		else
+			return false, "You are not the team owner!"
+		end
+	end
+end
+})
+minetest.register_chatcommand("teamleave", {
+	params = "none",
+	description = "Leave your team",
+	func = function(name, param)
+	local team = ctf.player(name).team
+	if ctf.player(param).team ~= nil then
+		if ctf.remove_player(param) then
+			return true, "You have left " .. team .. "!"
+		else 				
+			return false, "Failed to leave " .. team.. "!"
+		end
+	else
+		return false, "You are not in a team!"
+	end
+end
+})
+--[[
+minetest.register_chatcommand("join", {
+	params = "player name",
 	description = "Add to team",
 	func = function(name, param)
 		if ctf.join(name, param, false, name) then
@@ -148,7 +207,7 @@ minetest.register_chatcommand("join", {
 			return false, "Failed to join team!"
 		end
 	end
-})
+})--]]
 
 minetest.register_chatcommand("ctf_clean", {
 	description = "Do admin cleaning stuff",
@@ -261,7 +320,7 @@ minetest.register_chatcommand("all", {
 		end
 	end
 })
-
+--[[
 minetest.register_chatcommand("t", {
 	params = "msg",
 	description = "Send a message on the team channel",
@@ -290,7 +349,7 @@ minetest.register_chatcommand("t", {
 					"You're not in a team, so you have no team to talk to.")
 		end
 	end
-})
+})--]]
 
 -- Chat plus stuff
 if minetest.global_exists("chatplus") then

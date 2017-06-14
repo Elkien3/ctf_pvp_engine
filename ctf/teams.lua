@@ -196,6 +196,7 @@ function ctf.join(name, team, force, by)
 
 	minetest.log("action", name .. " joined team " .. team)
 	minetest.chat_send_all(name.." has joined team "..team)
+        minetest.get_player_privs(name).initial_team_join = false
 
 	for i = 1, #ctf.registered_on_join_team do
 		ctf.registered_on_join_team[i](name, team)
@@ -363,14 +364,14 @@ function ctf.move_to_spawn(name)
 	end
 	return false
 end
-
+--[[
 minetest.register_on_respawnplayer(function(player)
 	if not player then
 		return false
 	end
 
 	return ctf.move_to_spawn(player:get_player_name())
-end)
+end)--]]
 
 function ctf.get_territory_owner(pos)
 	local largest = nil

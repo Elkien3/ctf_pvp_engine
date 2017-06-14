@@ -53,6 +53,7 @@ local function do_capture(attname, flag, returned)
 
 		minetest.chat_send_all(flag_name.." has been captured "..
 				" by "..attname.." (team "..attacker.team..")")
+		irc:say(flag_name.." has been captured by "..attname.." (team "..attacker.team..")")
 
 		ctf.action("flag", attname .. " captured " .. flag_name)
 

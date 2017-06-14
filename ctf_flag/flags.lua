@@ -24,7 +24,16 @@ minetest.register_node("ctf_flag:flag", {
 	on_construct = ctf_flag.on_construct,
 	after_place_node = ctf_flag.after_place_node
 })
-
+--[[
+minetest.register_craft({
+	output = "ctf_flag:flag",
+	recipe = {
+		{"default:stick", "group:wool"},
+		{"default:stick", "",},
+		{"default:stick", ""}
+	}
+})
+--]]
 for color, _ in pairs(ctf.flag_colors) do
 	minetest.register_node("ctf_flag:flag_top_"..color,{
 		description = "You are not meant to have this! - flag top",

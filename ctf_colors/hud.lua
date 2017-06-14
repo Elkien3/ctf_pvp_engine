@@ -35,8 +35,20 @@ function ctf_colors.update(player, name, tplayer)
 	if ctf.setting("colors.skins") and tcolor_text and tcolor_hex then
 		if minetest.global_exists("armor") then
 			-- TODO: how should support for skin mods be done?
+                    
+                    if minetest.get_modpath("player_textures") then
+                            local filename = minetest.get_modpath("player_textures").."/textures/player_"..name
+                            local f = io.open(filename..".png")
+                            if f then
+                                f:close()
+                                armor.textures[name].skin ="player_"..name..".png"
+                                armor:update_player_visuals(player)
+                    else
+                        
 			armor.textures[name].skin = "ctf_colors_skin_" .. tcolor_text .. ".png"
 			armor:update_player_visuals(player)
+                   end
+                    end
 		else
 			player:set_properties({
 				textures = {"ctf_colors_skin_" .. tcolor_text .. ".png"}
