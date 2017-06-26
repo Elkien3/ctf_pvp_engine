@@ -185,8 +185,8 @@ minetest.register_chatcommand("teamleave", {
 	description = "Leave your team",
 	func = function(name, param)
 	local team = ctf.player(name).team
-	if ctf.player(param).team ~= nil then
-		if ctf.remove_player(param) then
+	if ctf.player(name).team ~= nil then
+		if ctf.remove_player(name) then
 			return true, "You have left " .. team .. "!"
 		else 				
 			return false, "Failed to leave " .. team.. "!"

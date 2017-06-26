@@ -125,12 +125,23 @@ function ctf.remove_player(name)
 			team.players[name] = nil
 		end
 		ctf.players[name] = nil
+		ctf.needs_save = true
 		return true
 	else
 		return false
 	end
 end
 
+ctf.registered_on_join_team = {}
+function ctf.register_on_join_team(func)
+	if ctf._mt_loaded then
+		error("You can't register callbacks at game time!")
+	end
+	table.insert(ctf.registered_on_join_team, func)
+end
+
+-- Player joins team
+-- Called by /join, /team join or auto allocate.
 ctf.registered_on_join_team = {}
 function ctf.register_on_join_team(func)
 	if ctf._mt_loaded then
@@ -193,10 +204,11 @@ function ctf.join(name, team, force, by)
 
 	player.team = team
 	team_data.players[player.name] = player
+	
+	ctf.needs_save = true
 
 	minetest.log("action", name .. " joined team " .. team)
 	minetest.chat_send_all(name.." has joined team "..team)
-        minetest.get_player_privs(name).initial_team_join = false
 
 	for i = 1, #ctf.registered_on_join_team do
 		ctf.registered_on_join_team[i](name, team)
