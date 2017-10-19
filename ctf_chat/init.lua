@@ -71,6 +71,9 @@ minetest.register_chatcommand("team", {
 				if value.auth then
 					minetest.chat_send_player(name, count .. ">> " .. value.name
 							.. " (team owner)")
+				elseif value.recruit then
+					minetest.chat_send_player(name, count .. ">> " .. value.name
+							.. " (team recruiter)")
 				else
 					minetest.chat_send_player(name, count .. ">> " .. value.name)
 				end
@@ -83,6 +86,9 @@ minetest.register_chatcommand("team", {
 				if ctf.player(test).auth then
 					return true, test ..
 							" is in team " .. ctf.player(test).team.." (team owner)"
+				elseif ctf.player(test).recruit then
+					return true, test ..
+							" is in team " .. ctf.player(test).team.." (team recruiter)"
 				else
 					return true, test ..
 							" is in team " .. ctf.player(test).team
@@ -148,14 +154,14 @@ minetest.register_chatcommand("join", {
 	elseif ctf.player(param).team then
 		return false, param .. " is already in a team!"
 	else
-	if ctf.player(name).auth then
+	if ctf.player(name).auth or ctf.player(name).recruit then
 			if ctf.join(param, team, false, name) then
 				return true, "Joined " .. param .. " to " .. team .. "!"
 			else 
 				return false, "Failed to join team!"
 			end
 		else
-			return false, "You are not the team owner!"
+			return false, "You are not a team owner/recuiter!"
 		end
 	end
 end
@@ -168,18 +174,21 @@ minetest.register_chatcommand("teamkick", {
 	if ctf.player(param).team ~= team then
 		return false, param .. " is not in your team!"
 	else
-	if ctf.player(name).auth then
+	if ctf.player(name).auth or ctf.player(name).recruit then
+		if ctf.player(param).auth or ctf.player(param).recuiter then
+			return false, param.. " is a team owner or recruiter!"
+		else
 			if ctf.remove_player(param) then
 				return true, "Kicked " .. param .. " from " .. team .. "!"
 			else 
 				return false, "Failed to kick " .. param.. "!"
 			end
-		else
-			return false, "You are not the team owner!"
 		end
+	else
+		return false, "You are not the team owner!"
 	end
 end
-})
+end})
 minetest.register_chatcommand("teamleave", {
 	params = "none",
 	description = "Leave your team",
@@ -276,11 +285,33 @@ minetest.register_chatcommand("team_owner", {
 	end
 })
 
+minetest.register_chatcommand("team_recruiter", {
+	params = "player name",
+	description = "Make player able to recruit",
+	func = function(name, param)
+		if ctf.player(name).auth or minetest.get_player_privs(name).ctf_admin then
+			if ctf and ctf.players and ctf.player(param) and ctf.player(param).team and ctf.team(ctf.player(param).team) then
+				if ctf.player(param).recruit == true then
+					ctf.player(param).recruit = false
+					return true, param.." was downgraded from team recruiter status"
+				else
+					ctf.player(param).recruit = true
+					return true, param.." was upgraded to a recruiter of "..ctf.player(name).team
+				end
+				ctf.needs_save = true
+			else
+				return false, "Unable to do that :/ "..param.." does not exist, or is not part of a valid team."
+			end
+		else
+			return false, "You are not the team owner!"
+		end
+	end
+})
+
 minetest.register_chatcommand("post", {
 	params = "message",
 	description = "Post a message on your team's message board",
 	func = function(name, param)
-
 		if ctf and ctf.players and ctf.players[name] and ctf.players[name].team and ctf.teams[ctf.players[name].team] then
 			if not ctf.player(name).auth then
 				minetest.chat_send_player(name, "You do not own that team")
@@ -397,3 +428,11 @@ if minetest.global_exists("chatplus") then
 		return false
 	end)
 end
+minetest.register_on_joinplayer(function(player)
+	inventory_plus.register_button(player,"ctf", "ctf")
+end)
+minetest.register_on_player_receive_fields(function(player, formname, fields)
+if fields.ctf then
+		ctf.gui.show(player:get_player_name())
+	end
+end)
