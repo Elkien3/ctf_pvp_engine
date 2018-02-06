@@ -13,6 +13,10 @@ function ctf.team(name)
 	else
 		local team = ctf.teams[name]
 		if team then
+			--Migration to version with applications
+			if not team.applications then
+			    team.applications = {}
+			end
 			if not team.data or not team.players then
 				ctf.warning("team", "Assertion failed, data{} or players{} not " ..
 						"found in team{}")
@@ -33,7 +37,8 @@ function ctf.create_team(name, data)
 	ctf.teams[name] = {
 		data = data,
 		spawn = nil,
-		players = {}
+		players = {},
+		applications = {}
 	}
 
 	for i = 1, #ctf.registered_on_new_team do
@@ -150,8 +155,82 @@ function ctf.register_on_join_team(func)
 	table.insert(ctf.registered_on_join_team, func)
 end
 
+-- Player makes an application to team manager to join a team
+-- Called by /apply
+function ctf.application_join(name, tname)
+	if not name or name == "" or not tname or tname == "" then
+		ctf.log("teams", "Missing parameters to ctf.request_join")
+	end
+	local player = ctf.player(name)
+	
+	if player.team and player.team == tname then
+		minetest.chat_send_player(name, "You are already a member of team " .. tname)
+		return false
+	end
+	
+	if not ctf.setting("players_can_change_team") and player.team and ctf.team(player.team) then
+		ctf.action("teams", name .. " requested to change to " .. tname)
+		minetest.chat_send_player(name, "You are not allowed to switch teams, traitor!")
+		return false
+	end
+	
+	local team_data = ctf.team(tname)
+	if not team_data then
+		minetest.chat_send_player(name, "No such team.")
+		ctf.list_teams(name)
+		minetest.log("action", name .. " requested to join to " .. tname .. ", which doesn't exist")
+		return false
+	end
+	
+	table.insert(team_data.applications,name)
+	--ctf.post(tname, {msg = name .. " has applied to join!" })
+	ctf.needs_save = true
+	return true
+end
+
+function ctf.decide_application(applicant_name, acceptor_name, team_name, decision)
+	if not applicant_name then
+		return false
+	end
+	local applicant = ctf.player(applicant_name)
+	if not applicant then
+		return false
+	end
+	if decision == "Accept" then
+		if applicant.team and ctf.setting("players_can_change_team") then
+			minetest.chat_send_player(acceptor_name, "Player " .. applicant_name .. " already a member of team " .. applicant.team)
+		else
+			ctf.join(applicant_name, team_name, true, acceptor_name)
+			table.insert(ctf.teams[ctf.players[acceptor_name].team].log,{msg=applicant_name .. " was recruited " .. acceptor_name .. "!"})
+		end
+	end
+	for key, field in pairs(ctf.teams) do
+	    ctf.delete_application(applicant_name, key)
+	end
+	remove_application_log_entry(team_name, applicant_name)
+end
+
+function ctf.delete_application(name, tname)
+	if not name or name == "" or not tname or tname == "" then
+		ctf.log("teams", "Missing parameters to ctf.delete_application")
+	end
+	local team = ctf.team(tname)
+	if not team then
+		minetest.chat_send_player(name, "No such team.")
+		return false
+	end
+	for key, field in pairs(team.applications) do
+		if field == name then
+			table.remove(team.applications, key)
+			ctf.needs_save = true
+			return true
+		end
+	end
+	return false
+end
+ 
 -- Player joins team
--- Called by /join, /team join or auto allocate.
+-- Called by /join, /team join, auto allocate or by response of the team manager.
 function ctf.join(name, team, force, by)
 	if not name or name == "" or not team or team == "" then
 		ctf.log("team", "Missing parameters to ctf.join")

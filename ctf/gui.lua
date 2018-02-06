@@ -55,7 +55,7 @@ function ctf.gui.get_tabs(name, tname)
 	local result = ""
 	local id = 1
 	local function addtab(name,text)
-		result = result .. "button[" .. (id*2-1) .. ",0;2,1;" .. name .. ";" .. text .. "]"
+		result = result .. "button[" .. (id*1.5-1) .. ",0;1.5,1;" .. name .. ";" .. text .. "]"
 		id = id + 1
 	end
 
@@ -99,8 +99,6 @@ ctf.gui.register_tab("news", "News", function(name, tname)
 					end
 					result = result .. "button[6," .. height .. ";1,1;btn_y" .. i .. ";Yes]"
 					result = result .. "button[7," .. height .. ";1,1;btn_n" .. i .. ";No]"
-				else
-					result = result .. "label[0.5," .. height .. ";RANDOM REQUEST TYPE]"
 				end
 			end
 		else
@@ -131,6 +129,35 @@ ctf.gui.register_tab("news", "News", function(name, tname)
 		result)
 end)
 
+ctf.gui.register_tab("applications","Applications", function(name, tname)
+	local result = ""
+	local data = {}
+	
+	result = result .. "label[0.5,1;Applicants to join " .. tname .. "]"
+	
+	for key, value in pairs(ctf.teams) do
+		if key == tname then
+			local height = 1.5
+			for key, value in pairs(value.applications) do
+				result = result .. "label[0.5.75," .. height .. ";" .. value .. "]"
+				if ctf.player(name).auth or ctf.player(name).recruit then
+					result = result .. "button[2.5," .. height .. ";2,1;player_" ..
+						value .. ";Accept]"
+					result = result .. "button[4.5," .. height .. ";2,1;player_" ..
+						value .. ";Reject]"
+				end
+				height = height + 1
+			end
+		end
+	end
+	
+	minetest.show_formspec(name, "ctf:applications",
+		"size[10,7]" ..
+		ctf.gui.get_tabs(name, tname) ..
+		result
+	)
+end)
+ 
 local scroll_diplomacy = 0
 local scroll_max = 0
 -- Team interface
@@ -228,7 +255,19 @@ local function formspec_is_ctf_tab(fsname)
 	end
 	return false
 end
-
+function remove_application_log_entry(tname, pname)
+	local entries = ctf.team(tname).log
+	if not entries then
+		return
+	end
+	for i = 1, #entries do
+		if entries[i].mode == "applications" and entries[i].player == pname then
+			table.remove(entries, i)
+			return
+		end
+	end
+end
+ 
 minetest.register_on_player_receive_fields(function(player, formname, fields)
 	if not formspec_is_ctf_tab(formname) then
 		return false
@@ -267,40 +306,75 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	local tname   = tplayer.team
 	local team    = ctf.team(tname)
 
-	if not team then
+	if not team or formname ~= "ctf:news" then
 		return false
 	end
 
-	if formname == "ctf:news" then
-		for key, field in pairs(fields) do
-			local ok, id = string.match(key, "btn_([yn])([0123456789]+)")
-			if ok and id then
-				if ok == "y" then
-					ctf.diplo.set(tname, team.log[tonumber(id)].team, team.log[tonumber(id)].msg)
+	for key, field in pairs(fields) do
+		local ok, id = string.match(key, "btn_([yn])([0123456789]+)")
+		if ok and id then
+			if ok == "y" then
+				ctf.diplo.set(tname, team.log[tonumber(id)].team, team.log[tonumber(id)].msg)
 
-					-- Post to acceptor's log
-					ctf.post(tname, {
-						msg = "You have accepted the " ..
-								team.log[tonumber(id)].msg .. " request from " ..
-								team.log[tonumber(id)].team })
+				-- Post to acceptor's log
+				ctf.post(tname, {
+					msg = "You have accepted the " ..
+							team.log[tonumber(id)].msg .. " request from " ..
+							team.log[tonumber(id)].team })
 
-					-- Post to request's log
-					ctf.post(team.log[tonumber(id)].team, {
-						msg = tname .. " has accepted your " ..
-								team.log[tonumber(id)].msg .. " request" })
+				-- Post to request's log
+				ctf.post(team.log[tonumber(id)].team, {
+					msg = tname .. " has accepted your " ..
+							team.log[tonumber(id)].msg .. " request" })
 
-					id = id + 1
-				end
+				id = id + 1
+			end
 
-				table.remove(team.log, id)
-				ctf.needs_save = true
-				ctf.gui.show(name, "news")
+			table.remove(team.log, id)
+			ctf.needs_save = true
+			ctf.gui.show(name, "news")
+			return true
+		end
+		local applicant_name, id = string.match(key, "player_([^_]+)_([0123456789]+)")
+		if applicant_name then
+			local acceptor_name = name
+			local team_name = tname
+			local decision = field
+			ctf.decide_application(
+				applicant_name,
+				acceptor_name,
+				team_name,
+				decision)
+			return true
+		end
+	end
+end)
+
+minetest.register_on_player_receive_fields(function(player, formname, fields)
+	local acceptor_name = player:get_player_name()
+	local team_name = ctf.player(acceptor_name).team
+	local team = ctf.team(team_name)
+	
+	if not team or formname ~= "ctf:applications" then
+		return false
+	end
+	
+	for key, field in pairs(fields) do
+		if ctf.player(acceptor_name).auth or ctf.player(acceptor_name).recruit then
+			local applicant_name = string.match(key, "player_(.+)")
+			if applicant_name then
+				local decision = field
+				ctf.decide_application(
+					applicant_name,
+					acceptor_name,
+					team_name,
+					decision)
+				ctf.gui.show(acceptor_name, "applications")
 				return true
 			end
 		end
 	end
 end)
-
 local cur_team = nil
 minetest.register_on_player_receive_fields(function(player, formname, fields)
 	local name    = player:get_player_name()
